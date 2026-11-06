@@ -1,10 +1,17 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../lib/store'
+import ColorPicker from './ColorPicker'
 import type { ThemePref } from '../lib/theme'
 
 export default function Settings({ theme, setTheme }: { theme: ThemePref; setTheme: (t: ThemePref) => void }) {
   const exportJSON = useStore((s) => s.exportJSON)
   const importJSON = useStore((s) => s.importJSON)
+  const options = useStore((s) => s.options)
+  const setOptionColor = useStore((s) => s.setOptionColor)
+  const deleteProject = useStore((s) => s.deleteProject)
+  const clearTasks = useStore((s) => s.clearTasks)
+  const [editing, setEditing] = useState<string | null>(null)
+  const projects = options.filter((o) => o.kind === 'project')
   const fileRef = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState('')
 
@@ -47,6 +54,32 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
         </div>
       </section>
       <section>
+        <h3>Proyectos y colores</h3>
+        {!projects.length && <p className="hint">Aún no hay proyectos. Créalos al editar una tarea.</p>}
+        {projects.map((p) => (
+          <div key={p.id} className="proj-row">
+            <button className="proj-head" onClick={() => setEditing(editing === p.id ? null : p.id)}>
+              <i className="dot big" style={{ background: p.color }} />
+              <span>{p.label}</span>
+              <span className="caret">{editing === p.id ? '▾' : '▸'}</span>
+            </button>
+            {editing === p.id && (
+              <>
+                <ColorPicker value={p.color} onChange={(hex) => setOptionColor(p.id, hex)} />
+                <button
+                  className="btn danger"
+                  onClick={() => {
+                    if (confirm(`¿Borrar el proyecto "${p.label}"? Sus tareas se quedan sin proyecto.`)) deleteProject(p.id)
+                  }}
+                >
+                  Borrar proyecto
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </section>
+      <section>
         <h3>Respaldo</h3>
         <p className="hint">Tus datos viven solo en este dispositivo. Guarda un respaldo en Archivos/iCloud de vez en cuando.</p>
         <div className="row">
@@ -55,6 +88,14 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
           <input ref={fileRef} type="file" accept="application/json" hidden onChange={(e) => doImport(e.target.files?.[0])} />
         </div>
         {msg && <p className="hint">{msg}</p>}
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (confirm('¿Borrar TODAS las tareas? Esto no se puede deshacer. Exporta un respaldo antes si lo necesitas.')) clearTasks()
+          }}
+        >
+          Borrar todas las tareas
+        </button>
       </section>
     </div>
   )

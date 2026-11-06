@@ -41,15 +41,13 @@ const collision: CollisionDetection = (args) => {
 
 function StripChip({ day, active, today, count, onClick }: { day: Weekday; active: boolean; today: boolean; count: number; onClick: () => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: `strip-${day}` })
-  const d = DAYS[day]
   return (
     <button
       ref={setNodeRef}
       className={'strip-chip' + (active ? ' active' : '') + (isOver ? ' over' : '') + (today ? ' today' : '')}
-      style={{ ['--c' as string]: d.color }}
       onClick={onClick}
     >
-      <span>{d.letter}</span>
+      <span>{DAYS[day].letter}</span>
       {count > 0 && <i>{count}</i>}
     </button>
   )

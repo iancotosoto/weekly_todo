@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Board from './components/Board'
+import Table from './components/Table'
 import Settings from './components/Settings'
 import { useStore } from './lib/store'
 import { useTheme } from './lib/theme'
@@ -22,12 +23,7 @@ export default function App() {
     <div className="app">
       <main className="main">
         {tab === 'week' && <Board />}
-        {tab === 'table' && (
-          <div className="placeholder">
-            <h2>Tabla</h2>
-            <p>Próximamente (Fase 3).</p>
-          </div>
-        )}
+        {tab === 'table' && <Table />}
         {tab === 'settings' && <Settings theme={theme} setTheme={setTheme} />}
       </main>
       <nav className="tabbar">

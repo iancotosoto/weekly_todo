@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store'
 import { DAYS, type Task, type Weekday } from '../lib/types'
+import ColorPicker from './ColorPicker'
 
 interface Props {
   task: Task
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export default function TaskSheet({ task, isNew, onClose }: Props) {
-  const { options, addTask, updateTask, deleteTask, addOption } = useStore()
+  const { options, addTask, updateTask, deleteTask, addOption, setOptionColor } = useStore()
   const [d, setD] = useState<Task>(task)
   const [newProject, setNewProject] = useState('')
   const set = (p: Partial<Task>) => setD((x) => ({ ...x, ...p }))
@@ -61,8 +62,7 @@ export default function TaskSheet({ task, isNew, onClose }: Props) {
             {DAYS.map((x, i) => (
               <button
                 key={x.short}
-                className={'chip day' + (d.weekday === i ? ' on' : '')}
-                style={{ ['--c' as string]: x.color }}
+                className={'chip' + (d.weekday === i ? ' on' : '')}
                 onClick={() => set({ weekday: i as Weekday })}
               >
                 {x.short}
@@ -97,13 +97,22 @@ export default function TaskSheet({ task, isNew, onClose }: Props) {
             <button className="btn" onClick={createProject} disabled={!newProject.trim()}>Crear</button>
           </div>
 
+          {d.projectId && projects.find((p) => p.id === d.projectId) && (
+            <>
+              <label className="lbl">Color del proyecto</label>
+              <ColorPicker
+                value={projects.find((p) => p.id === d.projectId)!.color}
+                onChange={(hex) => setOptionColor(d.projectId!, hex)}
+              />
+            </>
+          )}
+
           <label className="lbl">Estado</label>
           <div className="chips">
             {statuses.map((p) => (
               <button
                 key={p.id}
                 className={'chip' + (d.statusId === p.id ? ' on' : '')}
-                style={{ ['--c' as string]: p.color }}
                 onClick={() => set({ statusId: p.id })}
               >
                 {p.label}
@@ -117,7 +126,6 @@ export default function TaskSheet({ task, isNew, onClose }: Props) {
               <button
                 key={p.id}
                 className={'chip' + (d.importanceId === p.id ? ' on' : '')}
-                style={{ ['--c' as string]: p.color }}
                 onClick={() => set({ importanceId: p.id })}
               >
                 {p.label}

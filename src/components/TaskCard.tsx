@@ -11,8 +11,20 @@ interface Props {
   compact?: boolean
 }
 
+// El color de la tarjeta es el del proyecto; sin proyecto, gris neutro
 export const inkOf = (task: Task, options: Option[]) =>
-  options.find((o) => o.id === task.importanceId)?.color ?? 'var(--line)'
+  options.find((o) => o.id === task.projectId)?.color ?? 'var(--noink)'
+
+export function Dots({ task, options }: { task: Task; options: Option[] }) {
+  const imps = options.filter((o) => o.kind === 'importance')
+  const i = imps.findIndex((o) => o.id === task.importanceId)
+  if (i < 0 || imps.length < 2) return null
+  return (
+    <span className="dots" title={imps[i].label} aria-label={'Importancia ' + imps[i].label}>
+      {imps.map((_, k) => <i key={k} className={k <= i ? 'on' : ''} />)}
+    </span>
+  )
+}
 
 export function CardBody({ task, options, onToggle, compact }: Omit<Props, 'onOpen' | 'onToggle'> & { onToggle?: (id: string) => void }) {
   const proj = options.find((o) => o.id === task.projectId)
@@ -36,14 +48,11 @@ export function CardBody({ task, options, onToggle, compact }: Omit<Props, 'onOp
         </button>
         <div className="card-text">
           <div className={'card-name' + (done ? ' done' : '')}>{task.name || 'Sin nombre'}</div>
-          {!compact && (proj || when) && (
+          {!compact && (proj || when || task.importanceId) && (
             <div className="card-meta">
-              {proj && (
-                <span className="pill" style={{ ['--c' as string]: proj.color }}>
-                  {proj.label}
-                </span>
-              )}
+              {proj && <span className="proj-label">{proj.label}</span>}
               {when && <span className={'when' + (isOverdue(task) ? ' late' : '')}>{when}</span>}
+              <Dots task={task} options={options} />
             </div>
           )}
         </div>

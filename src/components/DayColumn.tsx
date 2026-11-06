@@ -21,7 +21,7 @@ const DayColumn = forwardRef<HTMLElement, Props>(function DayColumn(
   const { setNodeRef, isOver } = useDroppable({ id: `day-${day}` })
   const d = DAYS[day]
   return (
-    <section ref={ref} className="col" data-day={day} style={{ ['--day' as string]: d.color }}>
+    <section ref={ref} className={'col' + (isToday ? ' today' : '')} data-day={day}>
       <header className="flag">
         <span className="flag-name">{d.short}</span>
         {isToday && <span className="flag-today">HOY</span>}
