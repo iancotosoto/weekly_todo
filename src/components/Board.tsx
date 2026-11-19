@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { todayIndex } from '../lib/format'
 import { sortByOrder, useStore } from '../lib/store'
+import { dueOn, todayStr, weekDates } from '../lib/habits'
 import { DAYS, DONE_ID, type Container, type Task, type Weekday } from '../lib/types'
 import DayColumn from './DayColumn'
 import TaskSheet from './TaskSheet'
@@ -54,7 +55,8 @@ function StripChip({ day, active, today, count, onClick }: { day: Weekday; activ
 }
 
 export default function Board() {
-  const { tasks, options, moveTask, toggleDone } = useStore()
+  const { tasks, options, moveTask, toggleDone, habits } = useStore()
+  const [todayDate, setTodayDate] = useState(todayStr())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<{ task: Task; isNew: boolean } | null>(null)
   const [trayOpen, setTrayOpen] = useState(true)
@@ -62,6 +64,25 @@ export default function Board() {
   const scroller = useRef<HTMLDivElement>(null)
   const cols = useRef<(HTMLElement | null)[]>([])
   const today = todayIndex()
+  const dates = useMemo(() => weekDates(todayDate), [todayDate])
+
+  // Al pasar el día (o volver a abrir la app) se recalculan las fechas de la semana
+  useEffect(() => {
+    const tick = () => setTodayDate(todayStr())
+    const id = setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [])
+
+  // Hábitos que tocan cada día de la semana en curso
+  const habitsOf = (i: number) =>
+    habits
+      .map((h) => ({ habit: h, due: dueOn(h, dates[i]) }))
+      .filter((x) => x.due > 0)
+      .sort((a, b) => a.habit.order - b.habit.order)
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -144,7 +165,7 @@ export default function Board() {
               day={i as Weekday}
               active={current === i}
               today={today === i}
-              count={visible(i as Weekday).length}
+              count={visible(i as Weekday).length + habitsOf(i).length}
               onClick={() => scrollToDay(i)}
             />
           ))}
@@ -160,6 +181,8 @@ export default function Board() {
                 }}
                 day={i as Weekday}
                 tasks={visible(i as Weekday)}
+                habits={habitsOf(i)}
+                date={dates[i]}
                 options={options}
                 isToday={today === i}
                 onOpen={(t) => setSheet({ task: t, isNew: false })}

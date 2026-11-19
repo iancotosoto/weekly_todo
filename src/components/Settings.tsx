@@ -10,6 +10,7 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
   const setOptionColor = useStore((s) => s.setOptionColor)
   const deleteProject = useStore((s) => s.deleteProject)
   const clearTasks = useStore((s) => s.clearTasks)
+  const clearHabitLogs = useStore((s) => s.clearHabitLogs)
   const [editing, setEditing] = useState<string | null>(null)
   const projects = options.filter((o) => o.kind === 'project')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -95,6 +96,14 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
           }}
         >
           Borrar todas las tareas
+        </button>
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (confirm('¿Borrar el registro de todos los hábitos? Los hábitos se conservan.')) clearHabitLogs()
+          }}
+        >
+          Borrar registro de hábitos
         </button>
       </section>
     </div>

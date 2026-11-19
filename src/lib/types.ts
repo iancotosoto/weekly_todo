@@ -35,3 +35,33 @@ export interface Option {
 
 export const DONE_ID = 'st-done'
 export const TODO_ID = 'st-todo'
+
+// ---- Hábitos ----
+export type HabitMode = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'interval'
+export type EveryUnit = 'hours' | 'days' | 'weeks' | 'months'
+
+export interface Habit {
+  id: string
+  name: string
+  color: string | null
+  order: number
+  createdAt: number
+  archived: boolean
+  startDate: string // yyyy-MM-dd, ancla de los intervalos
+  mode: HabitMode
+  weekdays: Weekday[] // weekly
+  monthDays: number[] // monthly (1..31; los días que no existen caen en el último día del mes)
+  yearDates: string[] // yearly, 'MM-dd'
+  // daily/weekly/monthly/yearly: "cada N días/semanas/meses/años" (n=1 = siempre).
+  // interval: regla completa (cada N horas/días/semanas/meses).
+  every: { n: number; unit: EveryUnit }
+  goalWeek: number | null
+  goalMonth: number | null
+}
+
+export interface HabitLog {
+  id: string // `${habitId}_${date}`
+  habitId: string
+  date: string // yyyy-MM-dd
+  count: number
+}

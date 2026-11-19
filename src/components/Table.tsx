@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { formatWhen, isOverdue } from '../lib/format'
 import { useStore } from '../lib/store'
-import { DAYS, DONE_ID, type Option, type Task, type Weekday } from '../lib/types'
+import { DAYS, DONE_ID, type Habit, type Option, type Task, type Weekday } from '../lib/types'
+import { addDays, countOn, describe, dueOn, progress, todayStr, weekDates } from '../lib/habits'
+import HabitSheet from './HabitSheet'
+import { habitInk } from './HabitCard'
 import TaskSheet from './TaskSheet'
 
 type SortKey = 'name' | 'project' | 'date' | 'weekday' | 'status' | 'importance'
@@ -34,7 +37,8 @@ function Pill({ opt, colored }: { opt?: Option; colored?: boolean }) {
 }
 
 export default function Table() {
-  const { tasks, options, toggleDone } = useStore()
+  const { tasks, options, toggleDone, habits, habitLogs, logHabit } = useStore()
+  const [habitSheet, setHabitSheet] = useState<Habit | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'weekday', dir: 1 })
   const [groupBy, setGroupBy] = useState<GroupKey>('status')
   const [fProject, setFProject] = useState('')
@@ -191,9 +195,60 @@ export default function Table() {
               </div>
             )
           })}
+
+          {habits.some((h) => !h.archived) && (
+            <div className="tgroup">
+              <button className="ghead" onClick={() => toggleGroup('habits')}>
+                <span className="caret">{collapsed.has('habits') ? '▸' : '▾'}</span>
+                ↻ Hábitos
+                <span className="gcount">{habits.filter((h) => !h.archived).length}</span>
+              </button>
+              {!collapsed.has('habits') &&
+                habits
+                  .filter((h) => !h.archived)
+                  .sort((a, b) => a.order - b.order)
+                  .map((h) => {
+                    const today = todayStr()
+                    const due = dueOn(h, today)
+                    const count = countOn(habitLogs, h.id, today)
+                    const done = due > 0 && count >= due
+                    const next = Array.from({ length: 366 }, (_, i) => addDays(today, i + (due > 0 ? 1 : 0))).find((d) => dueOn(h, d) > 0)
+                    const w = weekDates(today)
+                    const wk = progress(h, habitLogs, w[0], w[6], h.goalWeek)
+                    return (
+                      <div key={h.id} className="trow" onClick={() => setHabitSheet(h)}>
+                        <div className="tcell c-name">
+                          {due > 0 ? (
+                            <button
+                              className={'check' + (done ? ' on' : '')}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                logHabit(h.id, today, done ? 0 : count + 1)
+                              }}
+                            >
+                              {done ? '✓' : due > 1 ? count : ''}
+                            </button>
+                          ) : (
+                            <span className="check off" />
+                          )}
+                          <span className={'tname' + (done ? ' done' : '')}>
+                            <i className="dot" style={{ background: habitInk(h) }} /> {h.name}
+                          </span>
+                        </div>
+                        <div className="tcell c-proj"><span className="pill plain">{describe(h)}</span></div>
+                        <div className="tcell c-date">{due > 0 ? 'Hoy' : next ? next.split('-').reverse().join('/') : <span className="dash">—</span>}</div>
+                        <div className="tcell c-day"><span className="dash">—</span></div>
+                        <div className="tcell c-stat"><span className="pill plain">Sem {wk.done}/{wk.goal ?? wk.scheduled}</span></div>
+                        <div className="tcell c-imp"><span className="dash">—</span></div>
+                      </div>
+                    )
+                  })}
+            </div>
+          )}
         </div>
       </div>
 
+      {habitSheet && <HabitSheet key={habitSheet.id} habit={habitSheet} onClose={() => setHabitSheet(null)} />}
       {sheet && <TaskSheet key={sheet.task.id || 'new'} task={sheet.task} isNew={sheet.isNew} onClose={() => setSheet(null)} />}
     </div>
   )

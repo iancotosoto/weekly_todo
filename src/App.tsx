@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import Board from './components/Board'
+import Habits from './components/Habits'
 import Table from './components/Table'
 import Settings from './components/Settings'
 import { useStore } from './lib/store'
 import { useTheme } from './lib/theme'
 
-type Tab = 'week' | 'table' | 'settings'
+type Tab = 'week' | 'table' | 'habits' | 'settings'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('week')
@@ -24,6 +25,7 @@ export default function App() {
       <main className="main">
         {tab === 'week' && <Board />}
         {tab === 'table' && <Table />}
+        {tab === 'habits' && <Habits />}
         {tab === 'settings' && <Settings theme={theme} setTheme={setTheme} />}
       </main>
       <nav className="tabbar">
@@ -31,6 +33,7 @@ export default function App() {
           [
             ['week', 'Semana', '▦'],
             ['table', 'Tabla', '☰'],
+            ['habits', 'Hábitos', '↻'],
             ['settings', 'Ajustes', '⚙'],
           ] as const
         ).map(([id, label, icon]) => (

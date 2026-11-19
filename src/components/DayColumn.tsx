@@ -1,12 +1,15 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { forwardRef } from 'react'
-import { DAYS, type Option, type Task, type Weekday } from '../lib/types'
+import { DAYS, type Habit, type Option, type Task, type Weekday } from '../lib/types'
 import TaskCard from './TaskCard'
+import HabitCard from './HabitCard'
 
 interface Props {
   day: Weekday
   tasks: Task[]
+  habits: { habit: Habit; due: number }[]
+  date: string
   options: Option[]
   isToday: boolean
   onOpen: (t: Task) => void
@@ -15,7 +18,7 @@ interface Props {
 }
 
 const DayColumn = forwardRef<HTMLElement, Props>(function DayColumn(
-  { day, tasks, options, isToday, onOpen, onToggle, onAdd },
+  { day, tasks, habits, date, options, isToday, onOpen, onToggle, onAdd },
   ref,
 ) {
   const { setNodeRef, isOver } = useDroppable({ id: `day-${day}` })
@@ -25,10 +28,13 @@ const DayColumn = forwardRef<HTMLElement, Props>(function DayColumn(
       <header className="flag">
         <span className="flag-name">{d.short}</span>
         {isToday && <span className="flag-today">HOY</span>}
-        <span className="flag-count">{tasks.length || ''}</span>
+        <span className="flag-count">{tasks.length + habits.length || ''}</span>
       </header>
       <div ref={setNodeRef} className={'lane' + (isOver ? ' over' : '')}>
         <div className="cord" />
+        {habits.map(({ habit, due }) => (
+          <HabitCard key={habit.id} habit={habit} date={date} due={due} />
+        ))}
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((t) => (
             <TaskCard key={t.id} task={t} options={options} onOpen={onOpen} onToggle={onToggle} />
