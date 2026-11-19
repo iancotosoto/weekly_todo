@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { todayIndex } from '../lib/format'
 import { sortByOrder, useStore } from '../lib/store'
-import { DAYS, type Container, type Task, type Weekday } from '../lib/types'
+import { DAYS, DONE_ID, type Container, type Task, type Weekday } from '../lib/types'
 import DayColumn from './DayColumn'
 import TaskSheet from './TaskSheet'
 import { CardBody, inkOf } from './TaskCard'
@@ -74,6 +74,9 @@ export default function Board() {
     for (const t of [...tasks].sort(sortByOrder)) m.get(t.weekday)!.push(t)
     return m
   }, [tasks])
+
+  // Las tareas hechas se ocultan en los días de la semana (siguen en la tabla y en la bandeja)
+  const visible = (d: Weekday) => byContainer.get(d)!.filter((t) => t.statusId !== DONE_ID)
 
   const scrollToDay = (i: number, smooth = true) => {
     const el = cols.current[i]
@@ -141,7 +144,7 @@ export default function Board() {
               day={i as Weekday}
               active={current === i}
               today={today === i}
-              count={byContainer.get(i as Weekday)!.length}
+              count={visible(i as Weekday).length}
               onClick={() => scrollToDay(i)}
             />
           ))}
@@ -156,7 +159,7 @@ export default function Board() {
                   cols.current[i] = el
                 }}
                 day={i as Weekday}
-                tasks={byContainer.get(i as Weekday)!}
+                tasks={visible(i as Weekday)}
                 options={options}
                 isToday={today === i}
                 onOpen={(t) => setSheet({ task: t, isNew: false })}
