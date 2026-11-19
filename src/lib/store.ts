@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { db } from './db'
 import { DEFAULT_OPTIONS, SEED_TASKS } from './seed'
 import { logKey, todayStr } from './habits'
-import { DONE_ID, TODO_ID, type Container, type Habit, type HabitLog, type Option, type OptionKind, type Task } from './types'
+import { latestLog, migrateIntervalHabits, recurringLogKey } from './recurring'
+import { DONE_ID, TODO_ID, type Container, type Habit, type HabitLog, type Option, type OptionKind, type Recurring, type RecurringLog, type Task } from './types'
 
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 import { BASIC_COLORS } from './colors'
@@ -14,6 +15,8 @@ interface State {
   customColors: string[]
   habits: Habit[]
   habitLogs: HabitLog[]
+  recurrings: Recurring[]
+  recurringLogs: RecurringLog[]
   load: () => Promise<void>
   addTask: (p: Partial<Task>) => Task
   updateTask: (id: string, patch: Partial<Task>) => void
@@ -31,6 +34,12 @@ interface State {
   deleteHabit: (id: string) => void
   logHabit: (habitId: string, date: string, count: number) => void
   clearHabitLogs: () => void
+  addRecurring: (p: Partial<Recurring>) => Recurring
+  updateRecurring: (id: string, patch: Partial<Recurring>) => void
+  deleteRecurring: (id: string) => void
+  completeRecurring: (id: string, date: string) => void
+  undoRecurring: (id: string, date: string) => void
+  clearRecurringLogs: () => void
   exportJSON: () => string
   importJSON: (json: string) => void
 }
@@ -59,21 +68,25 @@ export const useStore = create<State>((set, get) => ({
   customColors: [],
   habits: [],
   habitLogs: [],
+  recurrings: [],
+  recurringLogs: [],
 
   load: async () => {
-    const [tasks, options, cc, habits, habitLogs] = await Promise.all([
+    const [tasks, options, cc, habits, habitLogs, recurrings, recurringLogs] = await Promise.all([
       db.tasks.toArray(),
       db.options.toArray(),
       db.meta.get('customColors'),
       db.habits.toArray(),
       db.habitLogs.toArray(),
+      db.recurrings.toArray(),
+      db.recurringLogs.toArray(),
     ])
     const customColors = (cc?.value as string[] | undefined) ?? []
-    if (!options.length && !tasks.length && !habits.length) {
-      set({ tasks: SEED_TASKS, options: DEFAULT_OPTIONS, customColors, habits, habitLogs, ready: true })
+    if (!options.length && !tasks.length && !habits.length && !recurrings.length) {
+      set({ tasks: SEED_TASKS, options: DEFAULT_OPTIONS, customColors, habits, habitLogs, recurrings, recurringLogs, ready: true })
       persist()
     } else {
-      set({ tasks, options, customColors, habits, habitLogs, ready: true })
+      set({ tasks, options, customColors, habits, habitLogs, recurrings, recurringLogs, ready: true })
     }
   },
 
@@ -220,9 +233,73 @@ export const useStore = create<State>((set, get) => ({
     void db.habitLogs.clear()
   },
 
+  addRecurring: (p) => {
+    const max = Math.max(-1, ...get().recurrings.map((r) => r.order))
+    const rec: Recurring = {
+      id: uid(),
+      name: '',
+      color: null,
+      order: max + 1,
+      createdAt: Date.now(),
+      archived: false,
+      startDate: todayStr(),
+      deadlines: [{ n: 7, unit: 'days' }],
+      lastDone: null,
+      ...p,
+    }
+    set((s) => ({ recurrings: [...s.recurrings, rec] }))
+    void db.recurrings.put(rec)
+    return rec
+  },
+
+  updateRecurring: (id, patch) => {
+    set((s) => ({ recurrings: s.recurrings.map((r) => (r.id === id ? { ...r, ...patch } : r)) }))
+    const r = get().recurrings.find((x) => x.id === id)
+    if (r) void db.recurrings.put(r)
+  },
+
+  deleteRecurring: (id) => {
+    set((s) => ({ recurrings: s.recurrings.filter((r) => r.id !== id), recurringLogs: s.recurringLogs.filter((l) => l.recurringId !== id) }))
+    void db.transaction('rw', db.recurrings, db.recurringLogs, async () => {
+      await db.recurrings.delete(id)
+      await db.recurringLogs.where('recurringId').equals(id).delete()
+    })
+  },
+
+  completeRecurring: (id, date) => {
+    const log: RecurringLog = { id: recurringLogKey(id, date), recurringId: id, date }
+    set((s) => ({ recurringLogs: [...s.recurringLogs.filter((l) => l.id !== log.id), log] }))
+    get().updateRecurring(id, { lastDone: latestLog(get().recurringLogs, id) })
+    void db.recurringLogs.put(log)
+  },
+
+  undoRecurring: (id, date) => {
+    const key = recurringLogKey(id, date)
+    set((s) => ({ recurringLogs: s.recurringLogs.filter((l) => l.id !== key) }))
+    get().updateRecurring(id, { lastDone: latestLog(get().recurringLogs, id) })
+    void db.recurringLogs.delete(key)
+  },
+
+  clearRecurringLogs: () => {
+    set((s) => ({ recurringLogs: [], recurrings: s.recurrings.map((r) => ({ ...r, lastDone: null })) }))
+    void db.transaction('rw', db.recurrings, db.recurringLogs, async () => {
+      await db.recurringLogs.clear()
+      await db.recurrings.toCollection().modify({ lastDone: null })
+    })
+  },
+
   exportJSON: () =>
     JSON.stringify(
-      { version: 3, tasks: get().tasks, options: get().options, customColors: get().customColors, habits: get().habits, habitLogs: get().habitLogs },
+      {
+        version: 4,
+        tasks: get().tasks,
+        options: get().options,
+        customColors: get().customColors,
+        habits: get().habits,
+        habitLogs: get().habitLogs,
+        recurrings: get().recurrings,
+        recurringLogs: get().recurringLogs,
+      },
       null,
       2,
     ),
@@ -230,15 +307,29 @@ export const useStore = create<State>((set, get) => ({
   importJSON: (json) => {
     const data = JSON.parse(json)
     if (!Array.isArray(data.tasks) || !Array.isArray(data.options)) throw new Error('Archivo inválido')
-    const habits: Habit[] = Array.isArray(data.habits) ? data.habits : []
-    const habitLogs: HabitLog[] = Array.isArray(data.habitLogs) ? data.habitLogs : []
-    set({ tasks: data.tasks, options: data.options, customColors: Array.isArray(data.customColors) ? data.customColors : [], habits, habitLogs })
+    let habits: Habit[] = Array.isArray(data.habits) ? data.habits : []
+    let habitLogs: HabitLog[] = Array.isArray(data.habitLogs) ? data.habitLogs : []
+    let recurrings: Recurring[] = Array.isArray(data.recurrings) ? data.recurrings : []
+    let recurringLogs: RecurringLog[] = Array.isArray(data.recurringLogs) ? data.recurringLogs : []
+    if (!(data.version >= 4)) {
+      // Exportación anterior: los hábitos por intervalo (días/semanas/meses) pasan a recurrentes
+      const m = migrateIntervalHabits(habits, habitLogs)
+      habits = m.habits
+      habitLogs = m.habitLogs
+      recurrings = [...recurrings, ...m.recurrings]
+      recurringLogs = [...recurringLogs, ...m.recurringLogs]
+    }
+    set({ tasks: data.tasks, options: data.options, customColors: Array.isArray(data.customColors) ? data.customColors : [], habits, habitLogs, recurrings, recurringLogs })
     persist()
-    void db.transaction('rw', db.habits, db.habitLogs, async () => {
+    void db.transaction('rw', db.habits, db.habitLogs, db.recurrings, db.recurringLogs, async () => {
       await db.habits.clear()
       await db.habitLogs.clear()
+      await db.recurrings.clear()
+      await db.recurringLogs.clear()
       await db.habits.bulkPut(habits)
       await db.habitLogs.bulkPut(habitLogs)
+      await db.recurrings.bulkPut(recurrings)
+      await db.recurringLogs.bulkPut(recurringLogs)
     })
   },
 }))

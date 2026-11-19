@@ -38,8 +38,21 @@ const matchesMonthDay = (days: number[], d: Date) => {
   return days.some((x) => x === d.getDate() || (x > last && d.getDate() === last))
 }
 
-// Cuántas veces "toca" el hábito en la fecha dada (0 = no toca)
+// Semana del mes en que cae la fecha: 1..4 = n-ésima ocurrencia de ese día; además 5 si es la última
+export const monthWeekMatches = (weeks: number[], d: Date) => {
+  const nth = Math.ceil(d.getDate() / 7)
+  const isLast = d.getDate() + 7 > lastDayOfMonth(d.getFullYear(), d.getMonth())
+  return weeks.some((w) => (w === 5 ? isLast : w === nth))
+}
+
+// Cuántas veces "toca" el hábito en la fecha dada (0 = no toca). Con horas fijas, cada hora es una vez.
 export function dueOn(h: Habit, date: string): number {
+  const base = baseDueOn(h, date)
+  if (base === 0 || h.mode === 'interval') return base
+  return Math.max(1, h.times?.length ?? 0)
+}
+
+function baseDueOn(h: Habit, date: string): number {
   if (h.archived || date < h.startDate) return 0
   const n = Math.max(1, Math.floor(h.every.n) || 1)
   const d = parseDate(date)
@@ -53,6 +66,11 @@ export function dueOn(h: Habit, date: string): number {
       if (!h.weekdays.includes(wd as never)) return 0
       const weeks = Math.round(diffDays(mondayOf(h.startDate), mondayOf(date)) / 7)
       return weeks % n === 0 ? 1 : 0
+    }
+    case 'monthweek': {
+      const wd = ((d.getDay() + 6) % 7) as number
+      if (!h.weekdays.includes(wd as never) || !monthWeekMatches(h.monthWeeks ?? [], d)) return 0
+      return monthsDiff(s, d) % n === 0 ? 1 : 0
     }
     case 'monthly':
       return matchesMonthDay(h.monthDays, d) && monthsDiff(s, d) % n === 0 ? 1 : 0
@@ -104,7 +122,14 @@ export function progress(h: Habit, logs: HabitLog[], from: string, to: string, g
   return { done, scheduled, goal }
 }
 
+export const timesOf = (h: Habit) => (h.mode === 'interval' ? [] : [...(h.times ?? [])].sort())
+
 export function describe(h: Habit): string {
+  const t = timesOf(h)
+  return describeBase(h) + (t.length ? ` · ${t.join(', ')}` : '')
+}
+
+function describeBase(h: Habit): string {
   const { n, unit } = h.every
   const names = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
   const each = (sing: string, plur: string) => (n > 1 ? `cada ${n} ${plur}` : sing)
@@ -113,6 +138,10 @@ export function describe(h: Habit): string {
       return each('Todos los días', 'días')
     case 'weekly':
       return `${each('Semanal', 'semanas')}: ${h.weekdays.map((w) => names[w]).join(', ') || '—'}`
+    case 'monthweek': {
+      const w = (h.monthWeeks ?? []).map((x) => (x === 5 ? 'última' : `${x}.ª`)).join(', ') || '—'
+      return `${each('Mensual', 'meses')}: semana ${w} · ${h.weekdays.map((x) => names[x]).join(', ') || '—'}`
+    }
     case 'monthly':
       return `${each('Mensual', 'meses')}: día ${h.monthDays.join(', ') || '—'}`
     case 'yearly':

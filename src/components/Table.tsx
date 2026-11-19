@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 import { formatWhen, isOverdue } from '../lib/format'
 import { useStore } from '../lib/store'
-import { DAYS, DONE_ID, type Habit, type Option, type Task, type Weekday } from '../lib/types'
+import { DAYS, DONE_ID, type Habit, type Option, type Recurring, type Task, type Weekday } from '../lib/types'
 import { addDays, countOn, describe, dueOn, progress, todayStr, weekDates } from '../lib/habits'
 import HabitSheet from './HabitSheet'
 import { habitInk } from './HabitCard'
+import RecurringSheet from './RecurringSheet'
+import { recurringInk } from './RecurringCard'
+import { describeRecurring, isDoneToday, stageLabel, status } from '../lib/recurring'
 import TaskSheet from './TaskSheet'
 
 type SortKey = 'name' | 'project' | 'date' | 'weekday' | 'status' | 'importance'
@@ -39,6 +42,8 @@ function Pill({ opt, colored }: { opt?: Option; colored?: boolean }) {
 export default function Table() {
   const { tasks, options, toggleDone, habits, habitLogs, logHabit } = useStore()
   const [habitSheet, setHabitSheet] = useState<Habit | null>(null)
+  const [recSheet, setRecSheet] = useState<Recurring | null>(null)
+  const { recurrings, completeRecurring, undoRecurring } = useStore()
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'weekday', dir: 1 })
   const [groupBy, setGroupBy] = useState<GroupKey>('status')
   const [fProject, setFProject] = useState('')
@@ -245,9 +250,53 @@ export default function Table() {
                   })}
             </div>
           )}
+
+          {recurrings.some((r) => !r.archived) && (
+            <div className="tgroup">
+              <button className="ghead" onClick={() => toggleGroup('recurring')}>
+                <span className="caret">{collapsed.has('recurring') ? '▸' : '▾'}</span>
+                ⟳ Recurrentes
+                <span className="gcount">{recurrings.filter((r) => !r.archived).length}</span>
+              </button>
+              {!collapsed.has('recurring') &&
+                recurrings
+                  .filter((r) => !r.archived)
+                  .sort((a, b) => a.order - b.order)
+                  .map((r) => {
+                    const today = todayStr()
+                    const st = status(r, today)
+                    const done = isDoneToday(r, today)
+                    return (
+                      <div key={r.id} className="trow" onClick={() => setRecSheet(r)}>
+                        <div className="tcell c-name">
+                          <button
+                            className={'check' + (done ? ' on' : '')}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (done) undoRecurring(r.id, today)
+                              else completeRecurring(r.id, today)
+                            }}
+                          >
+                            {done ? '✓' : ''}
+                          </button>
+                          <span className={'tname' + (done ? ' done' : '')}>
+                            <i className="dot" style={{ background: recurringInk(r) }} /> {r.name}
+                          </span>
+                        </div>
+                        <div className="tcell c-proj"><span className="pill plain">{describeRecurring(r)}</span></div>
+                        <div className="tcell c-date">{st.dueDate === today ? 'Hoy' : st.dueDate.split('-').reverse().join('/')}</div>
+                        <div className="tcell c-day"><span className="dash">—</span></div>
+                        <div className="tcell c-stat"><span className={'pill plain' + (!done && st.overdue ? ' rec-badge overdue' : '')}>{done ? 'Hecha' : stageLabel(st)}</span></div>
+                        <div className="tcell c-imp"><span className="dash">—</span></div>
+                      </div>
+                    )
+                  })}
+            </div>
+          )}
         </div>
       </div>
 
+      {recSheet && <RecurringSheet key={recSheet.id} rec={recSheet} onClose={() => setRecSheet(null)} />}
       {habitSheet && <HabitSheet key={habitSheet.id} habit={habitSheet} onClose={() => setHabitSheet(null)} />}
       {sheet && <TaskSheet key={sheet.task.id || 'new'} task={sheet.task} isNew={sheet.isNew} onClose={() => setSheet(null)} />}
     </div>

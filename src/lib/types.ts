@@ -37,7 +37,7 @@ export const DONE_ID = 'st-done'
 export const TODO_ID = 'st-todo'
 
 // ---- Hábitos ----
-export type HabitMode = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'interval'
+export type HabitMode = 'daily' | 'weekly' | 'monthweek' | 'monthly' | 'yearly' | 'interval'
 export type EveryUnit = 'hours' | 'days' | 'weeks' | 'months'
 
 export interface Habit {
@@ -49,7 +49,9 @@ export interface Habit {
   archived: boolean
   startDate: string // yyyy-MM-dd, ancla de los intervalos
   mode: HabitMode
-  weekdays: Weekday[] // weekly
+  weekdays: Weekday[] // weekly y monthweek
+  monthWeeks?: number[] // monthweek: 1..4 = n-ésima ocurrencia del día en el mes, 5 = la última
+  times?: string[] // horas fijas HH:mm en los días que toca (cada una cuenta como una vez)
   monthDays: number[] // monthly (1..31; los días que no existen caen en el último día del mes)
   yearDates: string[] // yearly, 'MM-dd'
   // daily/weekly/monthly/yearly: "cada N días/semanas/meses/años" (n=1 = siempre).
@@ -64,4 +66,29 @@ export interface HabitLog {
   habitId: string
   date: string // yyyy-MM-dd
   count: number
+}
+
+// ---- Recurrentes ----
+// Tareas "cada X tiempo" con hasta 3 plazos (ideal, segundo, definitivo) contados desde la última vez que se hicieron.
+export interface Deadline {
+  n: number
+  unit: EveryUnit
+}
+
+export interface Recurring {
+  id: string
+  name: string
+  color: string | null
+  order: number
+  createdAt: number
+  archived: boolean
+  startDate: string // yyyy-MM-dd, ancla mientras nunca se ha hecho
+  deadlines: Deadline[] // 1..3, crecientes
+  lastDone: string | null // yyyy-MM-dd de la última vez que se hizo
+}
+
+export interface RecurringLog {
+  id: string // `${recurringId}_${date}`
+  recurringId: string
+  date: string // yyyy-MM-dd
 }

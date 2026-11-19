@@ -1,5 +1,5 @@
 import { useStore } from '../lib/store'
-import { countOn } from '../lib/habits'
+import { countOn, timesOf } from '../lib/habits'
 import type { Habit } from '../lib/types'
 
 export const habitInk = (h: Habit) => h.color ?? 'var(--noink)'
@@ -28,6 +28,7 @@ export default function HabitCard({ habit, date, due, onOpen }: { habit: Habit; 
           <div className={'card-name' + (done ? ' done' : '')}>{habit.name || 'Sin nombre'}</div>
           <div className="card-meta">
             <span className="proj-label">↻ Hábito</span>
+            {timesOf(habit).length > 0 && <span className="when">{timesOf(habit).join(' · ')}</span>}
             {due > 1 && <span className="when">{count}/{due}</span>}
           </div>
         </div>

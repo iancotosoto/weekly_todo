@@ -16,7 +16,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { todayIndex } from '../lib/format'
 import { sortByOrder, useStore } from '../lib/store'
-import { dueOn, todayStr, weekDates } from '../lib/habits'
+import { dueOn, timesOf, todayStr, weekDates } from '../lib/habits'
+import { isDoneToday, status } from '../lib/recurring'
 import { DAYS, DONE_ID, type Container, type Task, type Weekday } from '../lib/types'
 import DayColumn from './DayColumn'
 import TaskSheet from './TaskSheet'
@@ -55,7 +56,7 @@ function StripChip({ day, active, today, count, onClick }: { day: Weekday; activ
 }
 
 export default function Board() {
-  const { tasks, options, moveTask, toggleDone, habits } = useStore()
+  const { tasks, options, moveTask, toggleDone, habits, recurrings } = useStore()
   const [todayDate, setTodayDate] = useState(todayStr())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<{ task: Task; isNew: boolean } | null>(null)
@@ -82,7 +83,13 @@ export default function Board() {
     habits
       .map((h) => ({ habit: h, due: dueOn(h, dates[i]) }))
       .filter((x) => x.due > 0)
-      .sort((a, b) => a.habit.order - b.habit.order)
+      .sort((a, b) => (timesOf(a.habit)[0] ?? '99:99').localeCompare(timesOf(b.habit)[0] ?? '99:99') || a.habit.order - b.habit.order)
+
+  // Recurrentes cuyo plazo vigente cae en ese día (o vencidas, que se muestran en hoy); las hechas hoy siguen visibles para poder deshacer
+  const recurringsOf = (i: number) =>
+    recurrings
+      .filter((r) => !r.archived && (dates[i] === todayDate ? isDoneToday(r, todayDate) || status(r, todayDate).dueDate === todayDate : status(r, todayDate).dueDate === dates[i] && dates[i] > todayDate))
+      .sort((a, b) => a.order - b.order)
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -165,7 +172,7 @@ export default function Board() {
               day={i as Weekday}
               active={current === i}
               today={today === i}
-              count={visible(i as Weekday).length + habitsOf(i).length}
+              count={visible(i as Weekday).length + habitsOf(i).length + recurringsOf(i).length}
               onClick={() => scrollToDay(i)}
             />
           ))}
@@ -182,6 +189,7 @@ export default function Board() {
                 day={i as Weekday}
                 tasks={visible(i as Weekday)}
                 habits={habitsOf(i)}
+                recurrings={recurringsOf(i)}
                 date={dates[i]}
                 options={options}
                 isToday={today === i}

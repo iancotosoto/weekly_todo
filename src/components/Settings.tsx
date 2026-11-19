@@ -11,6 +11,7 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
   const deleteProject = useStore((s) => s.deleteProject)
   const clearTasks = useStore((s) => s.clearTasks)
   const clearHabitLogs = useStore((s) => s.clearHabitLogs)
+  const clearRecurringLogs = useStore((s) => s.clearRecurringLogs)
   const [editing, setEditing] = useState<string | null>(null)
   const projects = options.filter((o) => o.kind === 'project')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -104,6 +105,14 @@ export default function Settings({ theme, setTheme }: { theme: ThemePref; setThe
           }}
         >
           Borrar registro de hábitos
+        </button>
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (confirm('¿Borrar el registro de todas las recurrentes? Se conservan, pero volverán a contar desde su fecha de inicio.')) clearRecurringLogs()
+          }}
+        >
+          Borrar registro de recurrentes
         </button>
       </section>
     </div>
