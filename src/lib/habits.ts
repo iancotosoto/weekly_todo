@@ -114,12 +114,13 @@ export interface Progress {
   goal: number | null
 }
 
-export function progress(h: Habit, logs: HabitLog[], from: string, to: string, goal: number | null): Progress {
+// El objetivo se calcula solo: las veces que tocaba en el rango según la repetición del hábito.
+export function progress(h: Habit, logs: HabitLog[], from: string, to: string, _goal?: number | null): Progress {
   let done = 0
   for (const l of logs) if (l.habitId === h.id && l.date >= from && l.date <= to) done += l.count
   let scheduled = 0
   for (const d of rangeDates(from, to)) scheduled += dueOn(h, d)
-  return { done, scheduled, goal }
+  return { done, scheduled, goal: null }
 }
 
 export const timesOf = (h: Habit) => (h.mode === 'interval' ? [] : [...(h.times ?? [])].sort())

@@ -15,7 +15,6 @@ const MODES: [HabitMode, string][] = [
 const EVERY_NOUN: Record<HabitMode, string> = { daily: 'días', weekly: 'semanas', monthly: 'meses', yearly: 'años', interval: 'horas', monthweek: 'meses' }
 
 const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
-const numOrNull = (s: string) => (s === '' ? null : Math.max(0, Math.floor(Number(s)) || 0))
 
 export default function HabitSheet({ habit, onClose }: { habit: Habit | null; onClose: () => void }) {
   const { addHabit, updateHabit, deleteHabit } = useStore()
@@ -154,15 +153,6 @@ export default function HabitSheet({ habit, onClose }: { habit: Habit | null; on
           <div className="inline">
             <input className="field" type="number" min={1} style={{ width: 80 }} value={d.every.n} onChange={(e) => setEvery({ n: Number(e.target.value) })} />
             <span>{EVERY_NOUN[d.mode]}</span>
-          </div>
-
-          <label className="lbl">Fecha de inicio</label>
-          <input className="field" type="date" value={d.startDate} onChange={(e) => e.target.value && set({ startDate: e.target.value })} />
-
-          <label className="lbl">Objetivos (veces)</label>
-          <div className="inline">
-            <input className="field" type="number" min={0} placeholder="Por semana" value={d.goalWeek ?? ''} onChange={(e) => set({ goalWeek: numOrNull(e.target.value) })} />
-            <input className="field" type="number" min={0} placeholder="Por mes" value={d.goalMonth ?? ''} onChange={(e) => set({ goalMonth: numOrNull(e.target.value) })} />
           </div>
 
           <label className="lbl">Color</label>
