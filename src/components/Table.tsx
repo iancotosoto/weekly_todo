@@ -45,7 +45,7 @@ export default function Table() {
   const [recSheet, setRecSheet] = useState<Recurring | null>(null)
   const { recurrings, completeRecurring, undoRecurring } = useStore()
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'weekday', dir: 1 })
-  const [groupBy, setGroupBy] = useState<GroupKey>('status')
+  const [groupBy, setGroupBy] = useState<GroupKey>('none')
   const [fProject, setFProject] = useState('')
   const [fStatus, setFStatus] = useState('')
   const [hideDone, setHideDone] = useState(false)
@@ -153,15 +153,17 @@ export default function Table() {
 
           {groups.map((g) => {
             if (!g.tasks.length && groupBy !== 'none' && (g.id === 'g-none' || g.id === 'd-none')) return null
-            const isCollapsed = collapsed.has(g.id)
+            const isCollapsed = groupBy !== 'none' && collapsed.has(g.id)
             return (
               <div key={g.id} className="tgroup">
-                <button className="ghead" onClick={() => toggleGroup(g.id)}>
-                  <span className="caret">{isCollapsed ? '▸' : '▾'}</span>
-                  {g.color && <i className="dot" style={{ background: g.color }} />}
-                  {g.label}
-                  <span className="gcount">{g.tasks.length}</span>
-                </button>
+                {groupBy !== 'none' && (
+                  <button className="ghead" onClick={() => toggleGroup(g.id)}>
+                    <span className="caret">{isCollapsed ? '▸' : '▾'}</span>
+                    {g.color && <i className="dot" style={{ background: g.color }} />}
+                    {g.label}
+                    <span className="gcount">{g.tasks.length}</span>
+                  </button>
+                )}
                 {!isCollapsed && (
                   <>
                     {g.tasks.map((t) => {
