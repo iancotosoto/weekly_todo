@@ -5,10 +5,11 @@ import type { Recurring } from '../lib/types'
 export const recurringInk = (r: Recurring) => r.color ?? 'var(--noink)'
 
 // Tarjeta de recurrente en la pizarra (no arrastrable). Pasa de plazo en plazo hasta quedar vencida.
-export default function RecurringCard({ rec, today, onOpen }: { rec: Recurring; today: string; onOpen?: (r: Recurring) => void }) {
+export default function RecurringCard({ rec, today, date, onOpen }: { rec: Recurring; today: string; date?: string; onOpen?: (r: Recurring) => void }) {
   const complete = useStore((s) => s.completeRecurring)
   const undo = useStore((s) => s.undoRecurring)
-  const done = isDoneToday(rec, today)
+  // Una ocurrencia futura nunca está hecha: lo hecho hoy corresponde a la anterior
+  const done = isDoneToday(rec, today) && (date ?? today) === today
   const st = status(rec, today)
   return (
     <div className={'card habit-card rec-card' + (!done && st.overdue ? ' overdue' : '')} style={{ ['--ink' as string]: recurringInk(rec) }} onClick={() => onOpen?.(rec)}>

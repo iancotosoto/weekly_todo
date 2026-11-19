@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { todayIndex } from '../lib/format'
 import { sortByOrder, useStore } from '../lib/store'
-import { dueOn, timesOf, todayStr, weekDates } from '../lib/habits'
+import { countOn, dueOn, timesOf, todayStr, weekDates } from '../lib/habits'
 import { isDoneToday, status } from '../lib/recurring'
 import { DAYS, DONE_ID, type Container, type Task, type Weekday } from '../lib/types'
 import DayColumn from './DayColumn'
@@ -56,7 +56,7 @@ function StripChip({ day, active, today, count, onClick }: { day: Weekday; activ
 }
 
 export default function Board() {
-  const { tasks, options, moveTask, toggleDone, habits, recurrings } = useStore()
+  const { tasks, options, moveTask, toggleDone, habits, habitLogs, recurrings } = useStore()
   const [todayDate, setTodayDate] = useState(todayStr())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<{ task: Task; isNew: boolean } | null>(null)
@@ -82,13 +82,13 @@ export default function Board() {
   const habitsOf = (i: number) =>
     habits
       .map((h) => ({ habit: h, due: dueOn(h, dates[i]) }))
-      .filter((x) => x.due > 0)
+      .filter((x) => x.due > 0 && countOn(habitLogs, x.habit.id, dates[i]) < x.due)
       .sort((a, b) => (timesOf(a.habit)[0] ?? '99:99').localeCompare(timesOf(b.habit)[0] ?? '99:99') || a.habit.order - b.habit.order)
 
-  // Recurrentes cuyo plazo vigente cae en ese día (o vencidas, que se muestran en hoy); las hechas hoy siguen visibles para poder deshacer
+  // Recurrentes cuyo plazo vigente cae en ese día (o vencidas, que se muestran en hoy); las hechas se ocultan (siguen en la tabla y en Recurrentes)
   const recurringsOf = (i: number) =>
     recurrings
-      .filter((r) => !r.archived && (dates[i] === todayDate ? isDoneToday(r, todayDate) || status(r, todayDate).dueDate === todayDate : status(r, todayDate).dueDate === dates[i] && dates[i] > todayDate))
+      .filter((r) => !r.archived && (dates[i] === todayDate ? !isDoneToday(r, todayDate) && status(r, todayDate).dueDate === todayDate : status(r, todayDate).dueDate === dates[i] && dates[i] > todayDate))
       .sort((a, b) => a.order - b.order)
 
   const sensors = useSensors(

@@ -39,7 +39,7 @@ const DayColumn = forwardRef<HTMLElement, Props>(function DayColumn(
           <HabitCard key={habit.id} habit={habit} date={date} due={due} />
         ))}
         {recurrings.map((r) => (
-          <RecurringCard key={r.id} rec={r} today={todayStr()} />
+          <RecurringCard key={r.id} rec={r} today={todayStr()} date={date} />
         ))}
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((t) => (
