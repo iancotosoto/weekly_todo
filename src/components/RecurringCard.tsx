@@ -9,7 +9,8 @@ export default function RecurringCard({ rec, today, date, onOpen }: { rec: Recur
   const complete = useStore((s) => s.completeRecurring)
   const undo = useStore((s) => s.undoRecurring)
   // Una ocurrencia futura nunca está hecha: lo hecho hoy corresponde a la anterior
-  const done = isDoneToday(rec, today) && (date ?? today) === today
+  const day = date ?? today
+  const done = isDoneToday(rec, today) && day === today
   const st = status(rec, today)
   return (
     <div className={'card habit-card rec-card' + (!done && st.overdue ? ' overdue' : '')} style={{ ['--ink' as string]: recurringInk(rec) }} onClick={() => onOpen?.(rec)}>
@@ -21,7 +22,8 @@ export default function RecurringCard({ rec, today, date, onOpen }: { rec: Recur
           onClick={(e) => {
             e.stopPropagation()
             if (done) undo(rec.id, today)
-            else complete(rec.id, today)
+            // En un día futuro se marca esa ocurrencia (marcar "hoy" no hace nada si ya se hizo hoy)
+            else complete(rec.id, day)
           }}
         >
           {done ? '✓' : ''}
